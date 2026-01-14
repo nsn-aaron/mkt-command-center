@@ -995,6 +995,167 @@
         .notification.hiding {
             animation: slideOut 0.3s ease;
         }
+
+        /* Quadrant Matrix Styles */
+        .quadrant-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .filter-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .filter-label {
+            color: #9ca3af;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .dri-filter {
+            background: #0f1419;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+
+        .dri-filter:focus {
+            outline: none;
+            border-color: #00d4aa;
+        }
+
+        .quadrant-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 20px;
+            min-height: 700px;
+        }
+
+        .quadrant {
+            background: #0f1419;
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid #1f2937;
+            position: relative;
+            overflow-y: auto;
+        }
+
+        .quadrant-title {
+            font-size: 1.2em;
+            font-weight: 700;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .quadrant.high-impact-high-urgency {
+            border-color: #ef4444;
+        }
+
+        .quadrant.high-impact-high-urgency .quadrant-title {
+            border-color: #ef4444;
+            color: #f87171;
+        }
+
+        .quadrant.high-impact-low-urgency {
+            border-color: #3b82f6;
+        }
+
+        .quadrant.high-impact-low-urgency .quadrant-title {
+            border-color: #3b82f6;
+            color: #60a5fa;
+        }
+
+        .quadrant.low-impact-high-urgency {
+            border-color: #f59e0b;
+        }
+
+        .quadrant.low-impact-high-urgency .quadrant-title {
+            border-color: #f59e0b;
+            color: #fbbf24;
+        }
+
+        .quadrant.low-impact-low-urgency {
+            border-color: #6b7280;
+        }
+
+        .quadrant.low-impact-low-urgency .quadrant-title {
+            border-color: #6b7280;
+            color: #9ca3af;
+        }
+
+        .quadrant-task-card {
+            background: #151a21;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-left: 4px solid;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .quadrant-task-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0, 212, 170, 0.2);
+        }
+
+        .quadrant-task-card.production { border-left-color: #3b82f6; }
+        .quadrant-task-card.presence { border-left-color: #8b5cf6; }
+        .quadrant-task-card.push { border-left-color: #00d4aa; }
+
+        .quadrant-task-title {
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+
+        .quadrant-task-meta {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            font-size: 0.85em;
+        }
+
+        .quadrant-badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .quadrant-badge.dri {
+            background: rgba(0, 212, 170, 0.2);
+            color: #00d4aa;
+            border: 1px solid #00d4aa;
+        }
+
+        .quadrant-badge.bucket {
+            background: #1f2937;
+            color: #9ca3af;
+        }
+
+        .quadrant-badge.deadline {
+            background: #1f2937;
+            color: #9ca3af;
+        }
+
+        .quadrant-badge.deadline.urgent {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border: 1px solid #ef4444;
+        }
     </style>
 </head>
 <body>
@@ -1010,7 +1171,7 @@
         </div>
 
         <div class="view-switcher">
-            <button class="view-btn active" onclick="switchView('bubble')">Bubble Map</button>
+            <button class="view-btn active" onclick="switchView('bubble')">Matrix View</button>
             <button class="view-btn" onclick="switchView('kanban')">Kanban Board</button>
             <button class="view-btn" onclick="switchView('timeline')">Timeline</button>
         </div>
@@ -1099,6 +1260,14 @@
                     </select>
                 </div>
                 <div class="form-group">
+                    <label class="form-label">Impact *</label>
+                    <select class="form-select" id="taskImpact" required>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label class="form-label">DRI</label>
                     <select class="form-select" id="taskDRI">
                         <option value="">Select DRI</option>
@@ -1146,6 +1315,7 @@
         let lastModified = null;
         let currentView = 'bubble';
         let activeBucket = 'all';
+        let activeDRI = 'all';
         let taskToDelete = null;
 
         // Parse markdown content
@@ -1218,6 +1388,7 @@
                         status: '',
                         owner: '',
                         priority: '',
+                        impact: '',
                         deadline: '',
                         dependencies: '',
                         notes: ''
@@ -1234,6 +1405,8 @@
                         currentTask.owner = line.replace('- **Owner**:', '').trim();
                     } else if (line.startsWith('- **Priority**:')) {
                         currentTask.priority = line.replace('- **Priority**:', '').trim().toLowerCase();
+                    } else if (line.startsWith('- **Impact**:')) {
+                        currentTask.impact = line.replace('- **Impact**:', '').trim().toLowerCase();
                     } else if (line.startsWith('- **Deadline**:')) {
                         currentTask.deadline = line.replace('- **Deadline**:', '').trim();
                     } else if (line.startsWith('- **Dependency**:')) {
@@ -1431,16 +1604,39 @@
             }
         }
 
-        // Render bubble map view
+        // Calculate urgency from deadline
+        function getUrgencyFromDeadline(deadline) {
+            if (!deadline || deadline === 'TBD') {
+                return 'low';
+            }
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const deadlineDate = new Date(deadline);
+            const daysUntil = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));
+
+            if (daysUntil <= 7) {
+                return 'high'; // 0-7 days
+            } else if (daysUntil <= 30) {
+                return 'medium'; // 8-30 days
+            } else {
+                return 'low'; // 31+ days
+            }
+        }
+
+        // Render quadrant matrix view
         function renderBubbleView() {
             const container = document.getElementById('bubbleContainer');
             const statsBar = document.getElementById('statsBar');
 
+            // Filter tasks by DRI if needed
+            const filteredTasks = activeDRI === 'all' ? tasks : tasks.filter(t => t.owner === activeDRI);
+
             // Render stats
             const stats = {
-                total: tasks.length,
-                inProgress: tasks.filter(t => t.status === 'in-progress').length,
-                highPriority: tasks.filter(t => t.priority === 'high').length
+                total: filteredTasks.length,
+                inProgress: filteredTasks.filter(t => t.status === 'in-progress').length,
+                highImpact: filteredTasks.filter(t => t.impact === 'high').length
             };
 
             statsBar.innerHTML = `
@@ -1453,78 +1649,82 @@
                     <div class="stat-label">In Progress</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value">${stats.highPriority}</div>
-                    <div class="stat-label">High Priority</div>
+                    <div class="stat-value">${stats.highImpact}</div>
+                    <div class="stat-label">High Impact</div>
                 </div>
             `;
 
-            // Stop any existing simulation
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-                simulationRunning = false;
-            }
-
-            // Initialize force-directed layout
-            const positions = initializeForceLayout(tasks, 1260, 650);
-
-            // Status label formatter
-            const statusLabels = {
-                'backlog': 'Backlog',
-                'in-progress': 'In Progress',
-                'review': 'Review',
-                'done': 'Done'
+            // Categorize tasks into quadrants
+            const quadrants = {
+                highImpactHighUrgency: [],
+                highImpactLowUrgency: [],
+                lowImpactHighUrgency: [],
+                lowImpactLowUrgency: []
             };
 
+            filteredTasks.forEach((task, originalIndex) => {
+                const impact = task.impact || 'low';
+                const urgency = getUrgencyFromDeadline(task.deadline);
+                const taskIndex = tasks.indexOf(task);
+
+                if (impact === 'high' && urgency === 'high') {
+                    quadrants.highImpactHighUrgency.push({ task, index: taskIndex });
+                } else if (impact === 'high' && (urgency === 'medium' || urgency === 'low')) {
+                    quadrants.highImpactLowUrgency.push({ task, index: taskIndex });
+                } else if ((impact === 'medium' || impact === 'low') && urgency === 'high') {
+                    quadrants.lowImpactHighUrgency.push({ task, index: taskIndex });
+                } else {
+                    quadrants.lowImpactLowUrgency.push({ task, index: taskIndex });
+                }
+            });
+
+            // Get unique DRIs for filter
+            const uniqueDRIs = [...new Set(tasks.map(t => t.owner).filter(o => o && o !== ''))].sort();
+
             container.innerHTML = `
-                <div class="bubble-map-header">
-                    <div class="bubble-legend">
-                        <div class="legend-item active" onclick="filterBubbles('all')">
-                            <span style="font-weight: 600;">All</span>
-                        </div>
-                        <div class="legend-item active" onclick="filterBubbles('production')">
-                            <div class="legend-dot production"></div>
-                            <span>Production</span>
-                        </div>
-                        <div class="legend-item active" onclick="filterBubbles('presence')">
-                            <div class="legend-dot presence"></div>
-                            <span>Presence</span>
-                        </div>
-                        <div class="legend-item active" onclick="filterBubbles('push')">
-                            <div class="legend-dot push"></div>
-                            <span>Push</span>
-                        </div>
+                <div class="quadrant-header">
+                    <div class="filter-controls">
+                        <span class="filter-label">Filter by DRI:</span>
+                        <select class="dri-filter" onchange="filterByDRI(this.value)">
+                            <option value="all" ${activeDRI === 'all' ? 'selected' : ''}>All Team</option>
+                            ${uniqueDRIs.map(dri => `
+                                <option value="${dri}" ${activeDRI === dri ? 'selected' : ''}>${dri}</option>
+                            `).join('')}
+                        </select>
                     </div>
                     <button class="add-task-btn" onclick="showAddTaskModal()">+ Add Task</button>
                 </div>
-                <div class="bubble-map-container">
-                    <div class="bubble-canvas">
-                        ${tasks.map((task, idx) => {
-                            const pos = positions[idx];
-                            const animationDelay = Math.random() * 3;
-                            const size = getBubbleSizeFromDeadline(task.deadline);
-                            const progress = getStatusProgress(task.status);
-                            const radius = size / 2;
-                            const circumference = 2 * Math.PI * (radius - 2);
-                            const progressOffset = circumference - (progress / 100) * circumference;
+                <div class="quadrant-grid">
+                    ${renderQuadrant('high-impact-high-urgency', '🔥 Do First', quadrants.highImpactHighUrgency)}
+                    ${renderQuadrant('high-impact-low-urgency', '📅 Schedule', quadrants.highImpactLowUrgency)}
+                    ${renderQuadrant('low-impact-high-urgency', '⚡ Quick Wins', quadrants.lowImpactHighUrgency)}
+                    ${renderQuadrant('low-impact-low-urgency', '📋 Backlog', quadrants.lowImpactLowUrgency)}
+                </div>
+            `;
+        }
 
-                            // Determine text length based on bubble size
-                            const maxTextLength = size === 130 ? 35 : size === 100 ? 25 : 18;
+        function renderQuadrant(className, title, tasksInQuadrant) {
+            return `
+                <div class="quadrant ${className}">
+                    <div class="quadrant-title">
+                        <span>${title}</span>
+                        <span class="count">${tasksInQuadrant.length}</span>
+                    </div>
+                    <div class="quadrant-tasks">
+                        ${tasksInQuadrant.map(({ task, index }) => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const deadline = task.deadline && task.deadline !== 'TBD' ? new Date(task.deadline) : null;
+                            const daysUntil = deadline ? Math.ceil((deadline - today) / (1000 * 60 * 60 * 24)) : null;
+                            const isUrgent = daysUntil !== null && daysUntil <= 7;
 
                             return `
-                                <div class="bubble-wrapper" data-index="${idx}" style="left: ${pos.x}px; top: ${pos.y}px; width: ${size}px; height: ${size}px;">
-                                    <svg class="bubble-svg" width="${size}" height="${size}">
-                                        <circle class="progress-ring-bg" cx="${radius}" cy="${radius}" r="${radius - 2}"/>
-                                        <circle class="progress-ring status-${task.status}" cx="${radius}" cy="${radius}" r="${radius - 2}"
-                                                stroke-dasharray="${circumference}"
-                                                stroke-dashoffset="${progressOffset}"/>
-                                    </svg>
-                                    <div class="bubble bucket-${task.bucket}"
-                                         style="width: ${size - 8}px; height: ${size - 8}px;"
-                                         onclick="showTaskModal(${idx})"
-                                         oncontextmenu="showContextMenu(event, ${idx}); return false;"
-                                         title="${task.task}\nStatus: ${statusLabels[task.status]}\nBucket: ${task.bucket.toUpperCase()}">
-                                        <span class="bucket-badge ${task.bucket}">${task.bucket.substring(0, 4)}</span>
-                                        ${truncateText(task.task, maxTextLength)}
+                                <div class="quadrant-task-card ${task.bucket}" onclick="showTaskModal(${index})">
+                                    <div class="quadrant-task-title">${task.task}</div>
+                                    <div class="quadrant-task-meta">
+                                        ${task.owner ? `<span class="quadrant-badge dri">${task.owner}</span>` : ''}
+                                        <span class="quadrant-badge bucket">${task.bucket}</span>
+                                        <span class="quadrant-badge deadline ${isUrgent ? 'urgent' : ''}">${task.deadline || 'No deadline'}</span>
                                     </div>
                                 </div>
                             `;
@@ -1532,6 +1732,11 @@
                     </div>
                 </div>
             `;
+        }
+
+        function filterByDRI(dri) {
+            activeDRI = dri;
+            renderBubbleView();
         }
 
         // Render kanban view
@@ -1666,6 +1871,14 @@
                     </select>
                 </div>
                 <div class="form-group">
+                    <label class="form-label">Impact</label>
+                    <select class="form-select" id="taskImpactEdit">
+                        <option value="high" ${task.impact === 'high' ? 'selected' : ''}>High</option>
+                        <option value="medium" ${task.impact === 'medium' ? 'selected' : ''}>Medium</option>
+                        <option value="low" ${task.impact === 'low' ? 'selected' : ''}>Low</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label class="form-label">DRI</label>
                     <select class="form-select" id="taskDRIEdit">
                         <option value="">Select DRI</option>
@@ -1701,6 +1914,7 @@
                 bucket: document.getElementById('taskBucketEdit').value,
                 status: document.getElementById('taskStatusEdit').value,
                 priority: document.getElementById('taskPriorityEdit').value,
+                impact: document.getElementById('taskImpactEdit').value,
                 owner: document.getElementById('taskDRIEdit').value,
                 deadline: document.getElementById('taskDeadlineEdit').value,
                 dependencies: document.getElementById('taskDependencyEdit').value,
@@ -1757,6 +1971,7 @@
             const bucket = document.getElementById('taskBucket').value;
             const status = document.getElementById('taskStatus').value;
             const priority = document.getElementById('taskPriority').value;
+            const impact = document.getElementById('taskImpact').value;
             const dri = document.getElementById('taskDRI').value || '[Team Member Name]';
             const deadline = document.getElementById('taskDeadline').value || 'TBD';
             const dependency = document.getElementById('taskDependency').value || 'None';
@@ -1774,6 +1989,7 @@
 - **Status**: ${statusMap[status]}
 - **DRI**: ${dri}
 - **Priority**: ${priority.charAt(0).toUpperCase() + priority.slice(1)}
+- **Impact**: ${impact.charAt(0).toUpperCase() + impact.slice(1)}
 - **Deadline**: ${deadline}
 - **Dependency**: ${dependency}
 - **Notes**: ${notes}`;
