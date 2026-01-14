@@ -156,25 +156,42 @@ This format is simple enough for anyone to edit, yet structured enough for the d
 
 ---
 
-## Step 6: Smart Bubble Positioning
+## Step 6: Force-Directed Layout (Physics Simulation)
 
 ### The Challenge
-How do you place bubbles so they don't overlap?
+How do you show ALL tasks at once in a beautiful, organic way where nothing overlaps?
 
-### The Solution: Collision Detection Algorithm
+### The Solution: Physics-Based Force Simulation
+
+**Think of it like a galaxy of stars** - each bubble has gravity and pushes others away.
 
 **How it works:**
-1. For each task, determine bubble size (based on priority)
-2. Try to place bubble at random position
-3. Check distance to all existing bubbles
-4. If too close (would overlap), try again
-5. Try up to 200 times to find a good spot
-6. If still can't find spot, use grid layout as backup
+1. All bubbles start in the center, bunched together
+2. Each bubble "repels" every other bubble (like magnets)
+3. Bubbles are weakly "attracted" to their bucket area (loose grouping)
+4. Boundary forces keep everything on the canvas
+5. Animation runs for 300 frames (~5 seconds) until everything settles
+6. Dampening (friction) makes bubbles slow down and stop moving
 
-**Why this matters:**
-- Ensures all tasks are visible
-- Creates organic, natural-looking layout
-- Prevents bubbles from hiding each other
+**Forces applied every frame:**
+- **Repulsion force**: Pushes overlapping bubbles apart (inverse square law)
+- **Bucket attraction**: Gentle pull toward bucket center (very weak)
+- **Boundary force**: Pushes bubbles away from edges
+- **Dampening**: Reduces velocity by 15% each frame (friction)
+
+**The result:**
+- Bubbles naturally spread out across the entire canvas
+- No overlaps (physics prevents them)
+- Organic, beautiful layout that looks alive
+- Similar buckets loosely cluster together (but not forced)
+- Every task is visible in one glance
+
+**Why this is better than static positioning:**
+- Looks dynamic and engaging
+- Natural patterns emerge
+- Scales well (works with 10 or 100 tasks)
+- The "big picture" view the team needs
+- Feels more like a living dashboard than a static chart
 
 ---
 
@@ -252,16 +269,24 @@ Free website hosting from GitHub for static sites (HTML, CSS, JavaScript only)
 
 ## Step 10: Key Design Decisions
 
-### Decision 1: Single Unified Canvas vs. Three Columns
-**Initial design:** Three separate columns for each bucket
+### Decision 1: Force-Directed Layout vs. Static Positioning
+**Initial designs tried:**
+1. Three separate columns for each bucket (too rigid)
+2. Static random positioning (felt lifeless)
+3. Grid layout (too structured)
 
-**Final design:** One large canvas with all bubbles mixed
+**Final design:** Physics-based force simulation
 
-**Why we changed:**
-- Single canvas feels more modern and fluid
-- Easier to see all tasks at once
-- Bucket is shown by color and badge
-- Better use of screen space
+**Why we chose physics simulation:**
+- **The "big picture" view** - Everything visible at once in one organic cloud
+- **Natural emergence** - Patterns form naturally from forces, not rigid rules
+- **Engaging** - Bubbles animate into place, dashboard feels alive
+- **Scales beautifully** - Works with 5 or 500 tasks
+- **No overlaps guaranteed** - Physics naturally spaces things out
+- **Professional** - Looks like advanced data visualization tools
+- **Memorable** - Team will actually want to look at it
+
+The simulation runs for ~5 seconds when page loads, creating a unique layout each time while respecting bucket relationships.
 
 ### Decision 2: Status via Progress Ring
 **Why progress rings?**
