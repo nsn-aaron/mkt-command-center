@@ -1255,6 +1255,143 @@
         .legend-color-box.red { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
         .legend-color-box.yellow { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
         .legend-color-box.green { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+
+        /* To-Do List View */
+        .todo-list-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .todo-column {
+            background: #0f1419;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #1f2937;
+            min-height: 600px;
+        }
+
+        .todo-column-header {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #00d4aa;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #1f2937;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .todo-task-item {
+            background: #151a21;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            border-left: 4px solid;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            display: flex;
+            gap: 12px;
+            align-items: start;
+        }
+
+        .todo-task-item.production { border-left-color: #3b82f6; }
+        .todo-task-item.presence { border-left-color: #8b5cf6; }
+        .todo-task-item.push { border-left-color: #00d4aa; }
+
+        .todo-task-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0, 212, 170, 0.2);
+        }
+
+        .todo-task-item.completed {
+            opacity: 0.5;
+            background: #0f1419;
+        }
+
+        .todo-task-item.completed .todo-task-title {
+            text-decoration: line-through;
+            color: #6b7280;
+        }
+
+        .todo-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #374151;
+            border-radius: 4px;
+            cursor: pointer;
+            flex-shrink: 0;
+            margin-top: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .todo-checkbox:hover {
+            border-color: #00d4aa;
+        }
+
+        .todo-checkbox.checked {
+            background: #10b981;
+            border-color: #10b981;
+        }
+
+        .todo-checkbox.checked::after {
+            content: '✓';
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .todo-task-content {
+            flex: 1;
+        }
+
+        .todo-task-title {
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        .todo-task-meta {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            font-size: 0.8em;
+        }
+
+        .todo-badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .todo-badge.bucket {
+            background: #1f2937;
+            color: #9ca3af;
+        }
+
+        .todo-badge.deadline {
+            background: #1f2937;
+            color: #9ca3af;
+        }
+
+        .todo-badge.deadline.urgent {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border: 1px solid #ef4444;
+        }
+
+        .todo-badge.status {
+            background: rgba(0, 212, 170, 0.2);
+            color: #00d4aa;
+            border: 1px solid #00d4aa;
+        }
     </style>
 </head>
 <body>
@@ -1272,7 +1409,7 @@
         <div class="view-switcher">
             <button class="view-btn active" onclick="switchView('bubble')">Timeline & Capacity</button>
             <button class="view-btn" onclick="switchView('kanban')">Kanban Board</button>
-            <button class="view-btn" onclick="switchView('timeline')">Deadline List</button>
+            <button class="view-btn" onclick="switchView('timeline')">To-Do List</button>
         </div>
 
         <div class="view-container">
@@ -2036,45 +2173,95 @@
             setupDragAndDrop();
         }
 
-        // Render timeline view
+        // Render to-do list view by DRI
         function renderTimelineView() {
             const container = document.getElementById('timelineContainer');
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            // Sort tasks by deadline
-            const sortedTasks = [...tasks]
-                .filter(t => t.deadline && t.deadline !== 'TBD')
-                .sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+            const dris = ['Aaron', 'Ingrid', 'Shaun', 'Jarod'];
 
-            container.innerHTML = sortedTasks.map(task => {
-                const deadline = new Date(task.deadline);
-                const daysUntil = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
+            container.innerHTML = `
+                <div class="todo-list-grid">
+                    ${dris.map(dri => renderTodoColumn(dri, today)).join('')}
+                </div>
+            `;
+        }
 
-                let dateClass = 'future';
-                if (daysUntil < 0) dateClass = 'overdue';
-                else if (daysUntil <= 7) dateClass = 'upcoming';
+        function renderTodoColumn(dri, today) {
+            const driTasks = tasks.filter(t => t.owner === dri);
+            const incompleteTasks = driTasks.filter(t => t.status !== 'done');
+            const completedTasks = driTasks.filter(t => t.status === 'done');
 
-                return `
-                    <div class="timeline-row" onclick="showTaskModal(${tasks.indexOf(task)})">
-                        <div class="timeline-date ${dateClass}">
-                            ${task.deadline}
-                        </div>
-                        <div class="timeline-bucket-indicator ${task.bucket}"></div>
-                        <div class="timeline-content">
-                            <div class="timeline-task-name">${task.task}</div>
-                            <div class="timeline-task-meta">
-                                <span>${task.bucket.toUpperCase()}</span>
-                                <span>•</span>
-                                <span>${task.priority.toUpperCase()} Priority</span>
-                                <span>•</span>
-                                <span>${task.status.replace('-', ' ').toUpperCase()}</span>
-                                ${daysUntil < 0 ? '<span>• OVERDUE</span>' : daysUntil <= 7 ? `<span>• ${daysUntil} days left</span>` : ''}
-                            </div>
-                        </div>
+            return `
+                <div class="todo-column">
+                    <div class="todo-column-header">
+                        <span>${dri}</span>
+                        <span class="count">${incompleteTasks.length}/${driTasks.length}</span>
                     </div>
-                `;
-            }).join('');
+                    <div class="todo-tasks">
+                        ${[...incompleteTasks, ...completedTasks].map(task => {
+                            const taskIndex = tasks.indexOf(task);
+                            const isDone = task.status === 'done';
+
+                            let deadlineClass = '';
+                            let daysText = '';
+                            if (task.deadline && task.deadline !== 'TBD') {
+                                const deadline = new Date(task.deadline);
+                                const daysUntil = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
+
+                                if (daysUntil < 0) {
+                                    deadlineClass = 'urgent';
+                                    daysText = 'Overdue';
+                                } else if (daysUntil <= 3) {
+                                    deadlineClass = 'urgent';
+                                    daysText = `${daysUntil}d left`;
+                                } else if (daysUntil <= 7) {
+                                    daysText = `${daysUntil}d left`;
+                                } else {
+                                    daysText = task.deadline;
+                                }
+                            } else {
+                                daysText = 'No deadline';
+                            }
+
+                            return `
+                                <div class="todo-task-item ${task.bucket} ${isDone ? 'completed' : ''}" onclick="event.stopPropagation(); showTaskModal(${taskIndex})">
+                                    <div class="todo-checkbox ${isDone ? 'checked' : ''}"
+                                         onclick="event.stopPropagation(); toggleTaskComplete(${taskIndex})"></div>
+                                    <div class="todo-task-content">
+                                        <div class="todo-task-title">${task.task}</div>
+                                        <div class="todo-task-meta">
+                                            <span class="todo-badge bucket">${task.bucket}</span>
+                                            ${!isDone ? `<span class="todo-badge status">${task.status.replace('-', ' ')}</span>` : ''}
+                                            <span class="todo-badge deadline ${deadlineClass}">${daysText}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function toggleTaskComplete(taskIndex) {
+            const task = tasks[taskIndex];
+
+            if (task.status === 'done') {
+                // Un-complete: set back to in-progress
+                task.status = 'in-progress';
+            } else {
+                // Mark as done
+                task.status = 'done';
+            }
+
+            // Re-render all views
+            renderBubbleView();
+            renderKanbanView();
+            renderTimelineView();
+
+            showNotification(`✓ Task ${task.status === 'done' ? 'completed' : 'reopened'}`, 'success');
         }
 
         // Show task modal with editable notes
