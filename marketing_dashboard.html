@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Marketing Operations Dashboard</title>
+    <title>Marketing Command Center</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1257,6 +1257,41 @@
         .legend-color-box.yellow { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
         .legend-color-box.green { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
 
+        /* Sort Controls */
+        .sort-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .sort-label {
+            font-size: 0.9em;
+            color: #9ca3af;
+            font-weight: 500;
+        }
+
+        .sort-select {
+            background: #151a21;
+            border: 1px solid #252d38;
+            color: #e5e7eb;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .sort-select:hover {
+            border-color: #00d4aa;
+        }
+
+        .sort-select:focus {
+            border-color: #00d4aa;
+            box-shadow: 0 0 0 2px rgba(0, 212, 170, 0.1);
+        }
+
         /* To-Do List View */
         .todo-list-grid {
             display: grid;
@@ -1398,7 +1433,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Marketing Operations Dashboard</h1>
+            <h1>Marketing Command Center</h1>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <button class="error-log-btn" id="errorLogBtn" onclick="toggleErrorLog()">Error Log</button>
                 <div class="refresh-indicator" id="refreshIndicator">
@@ -1425,24 +1460,30 @@
             </div>
 
             <div id="kanbanView" class="view">
+                <div class="timeline-header">
+                    <div class="sort-controls">
+                        <label class="sort-label">Sort by:</label>
+                        <select class="sort-select" id="kanbanSortSelect" onchange="updateKanbanSort()">
+                            <option value="default">Default</option>
+                            <option value="priority">Priority</option>
+                            <option value="deadline">Deadline</option>
+                            <option value="dependency">Has Dependency</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="kanban-board" id="kanbanBoard"></div>
             </div>
 
             <div id="timelineView" class="view">
                 <div class="timeline-header">
-                    <div class="timeline-legend">
-                        <div class="legend-item">
-                            <div class="legend-color production"></div>
-                            <span>Production</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-color presence"></div>
-                            <span>Presence</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-color push"></div>
-                            <span>Push</span>
-                        </div>
+                    <div class="sort-controls">
+                        <label class="sort-label">Sort by:</label>
+                        <select class="sort-select" id="todoSortSelect" onchange="updateTodoSort()">
+                            <option value="default">Default</option>
+                            <option value="priority">Priority</option>
+                            <option value="deadline">Deadline</option>
+                            <option value="dependency">Has Dependency</option>
+                        </select>
                     </div>
                 </div>
                 <div class="timeline" id="timelineContainer"></div>
@@ -1554,6 +1595,8 @@
         let activeBucket = 'all';
         let activeDRI = 'all';
         let taskToDelete = null;
+        let todoSortType = 'default';
+        let kanbanSortType = 'default';
 
         // Parse markdown content
         async function loadMarkdownData() {
@@ -2140,7 +2183,8 @@
             };
 
             board.innerHTML = statuses.map(status => {
-                const statusTasks = tasks.filter(t => t.status === status);
+                let statusTasks = tasks.filter(t => t.status === status);
+                statusTasks = sortTasks([...statusTasks], kanbanSortType);
                 return `
                     <div class="kanban-column ${status}" data-status="${status}">
                         <div class="column-header">
@@ -2193,8 +2237,12 @@
 
         function renderTodoColumn(dri, today) {
             const driTasks = tasks.filter(t => t.owner === dri);
-            const incompleteTasks = driTasks.filter(t => t.status !== 'done');
-            const completedTasks = driTasks.filter(t => t.status === 'done');
+            let incompleteTasks = driTasks.filter(t => t.status !== 'done');
+            let completedTasks = driTasks.filter(t => t.status === 'done');
+
+            // Apply sorting
+            incompleteTasks = sortTasks([...incompleteTasks]);
+            completedTasks = sortTasks([...completedTasks]);
 
             return `
                 <div class="todo-column">
@@ -2268,6 +2316,43 @@
             renderTimelineView();
 
             showNotification(`✓ Task ${task.status === 'done' ? 'completed' : 'reopened'}`, 'success');
+        }
+
+        function updateTodoSort() {
+            const sortSelect = document.getElementById('todoSortSelect');
+            todoSortType = sortSelect.value;
+            renderTimelineView();
+        }
+
+        function updateKanbanSort() {
+            const sortSelect = document.getElementById('kanbanSortSelect');
+            kanbanSortType = sortSelect.value;
+            renderKanbanView();
+        }
+
+        function sortTasks(tasksArray, sortType = null) {
+            const activeSortType = sortType || todoSortType;
+            if (activeSortType === 'priority') {
+                const priorityOrder = { 'high': 1, 'medium': 2, 'low': 3 };
+                return tasksArray.sort((a, b) => {
+                    const priorityA = priorityOrder[a.priority] || 4;
+                    const priorityB = priorityOrder[b.priority] || 4;
+                    return priorityA - priorityB;
+                });
+            } else if (activeSortType === 'deadline') {
+                return tasksArray.sort((a, b) => {
+                    const dateA = a.deadline && a.deadline !== 'TBD' ? new Date(a.deadline) : new Date('9999-12-31');
+                    const dateB = b.deadline && b.deadline !== 'TBD' ? new Date(b.deadline) : new Date('9999-12-31');
+                    return dateA - dateB;
+                });
+            } else if (activeSortType === 'dependency') {
+                return tasksArray.sort((a, b) => {
+                    const hasDependencyA = a.dependencies && a.dependencies.toLowerCase() !== 'none' && a.dependencies.trim() !== '' ? 0 : 1;
+                    const hasDependencyB = b.dependencies && b.dependencies.toLowerCase() !== 'none' && b.dependencies.trim() !== '' ? 0 : 1;
+                    return hasDependencyA - hasDependencyB;
+                });
+            }
+            return tasksArray; // default - no sorting
         }
 
         // Show task modal with editable notes
