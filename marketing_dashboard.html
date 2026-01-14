@@ -926,19 +926,20 @@
         }
 
         .delete-btn-kanban {
-            background: rgba(239, 68, 68, 0.2);
-            color: #ef4444;
-            border: 1px solid #ef4444;
+            background: transparent;
+            color: #6b7280;
+            border: none;
             padding: 4px 8px;
             border-radius: 4px;
-            font-size: 0.75em;
+            font-size: 1em;
             cursor: pointer;
             transition: all 0.2s ease;
+            opacity: 0.5;
         }
 
         .delete-btn-kanban:hover {
-            background: #ef4444;
-            color: white;
+            opacity: 1;
+            color: #9ca3af;
         }
 
         /* Notification Toast */
@@ -1407,9 +1408,9 @@
         </div>
 
         <div class="view-switcher">
-            <button class="view-btn active" onclick="switchView('bubble')">Timeline & Capacity</button>
-            <button class="view-btn" onclick="switchView('kanban')">Kanban Board</button>
-            <button class="view-btn" onclick="switchView('timeline')">To-Do List</button>
+            <button class="view-btn active" onclick="switchView('bubble')">Timeline</button>
+            <button class="view-btn" onclick="switchView('kanban')">Kanban</button>
+            <button class="view-btn" onclick="switchView('timeline')">DRI Dos</button>
         </div>
 
         <div class="view-container">
@@ -1953,6 +1954,8 @@
                     </div>
                 </div>
             `;
+
+            setupTimelineDragAndDrop(startDate, endDate);
         }
 
         function renderSwimlane(label, bucket, bucketTasks, startDate, endDate) {
@@ -2027,6 +2030,9 @@
                 return `
                     <div class="timeline-task risk-${riskLevel}"
                          style="left: ${position}%; top: ${topPosition}px;"
+                         draggable="true"
+                         data-task-id="${taskIndex}"
+                         data-bucket="${task.bucket}"
                          onclick="showTaskModal(${taskIndex})"
                          title="${task.task} - ${task.deadline}">
                         ${truncateText(task.task, 12)}
@@ -2061,7 +2067,6 @@
                             const driTasks = tasks.filter(t => t.owner === dri);
                             const total = driTasks.length;
                             const inProgress = driTasks.filter(t => t.status === 'in-progress').length;
-                            const highImpact = driTasks.filter(t => t.impact === 'high').length;
                             const atRisk = driTasks.filter(t => getTaskRiskLevel(t) === 'critical').length;
 
                             return `
@@ -2073,10 +2078,6 @@
                                     <div class="capacity-cell ${getLoadClass(inProgress)}">
                                         <div class="capacity-count">${inProgress}</div>
                                         <div class="capacity-label-small">In Progress</div>
-                                    </div>
-                                    <div class="capacity-cell ${getLoadClass(highImpact)}">
-                                        <div class="capacity-count">${highImpact}</div>
-                                        <div class="capacity-label-small">High Impact</div>
                                     </div>
                                     <div class="capacity-cell ${getLoadClass(atRisk)}">
                                         <div class="capacity-count">${atRisk}</div>
@@ -2155,7 +2156,7 @@
                                      data-task-id="${taskIndex}">
                                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
                                         <div class="card-title" style="flex: 1; margin: 0;" onclick="showTaskModal(${taskIndex})">${task.task}</div>
-                                        <button class="delete-btn-kanban" onclick="event.stopPropagation(); if(confirm('Delete this task?')) deleteTask(${taskIndex});">×</button>
+                                        <button class="delete-btn-kanban" onclick="event.stopPropagation(); if(confirm('Delete this task?')) deleteTask(${taskIndex});">🗑️</button>
                                     </div>
                                     <div class="card-meta">
                                         <span class="card-badge bucket ${task.bucket}">${task.bucket}</span>
@@ -2186,6 +2187,8 @@
                     ${dris.map(dri => renderTodoColumn(dri, today)).join('')}
                 </div>
             `;
+
+            setupTodoDragAndDrop();
         }
 
         function renderTodoColumn(dri, today) {
@@ -2199,7 +2202,7 @@
                         <span>${dri}</span>
                         <span class="count">${incompleteTasks.length}/${driTasks.length}</span>
                     </div>
-                    <div class="todo-tasks">
+                    <div class="todo-tasks" data-dri="${dri}">
                         ${[...incompleteTasks, ...completedTasks].map(task => {
                             const taskIndex = tasks.indexOf(task);
                             const isDone = task.status === 'done';
@@ -2226,7 +2229,10 @@
                             }
 
                             return `
-                                <div class="todo-task-item ${task.bucket} ${isDone ? 'completed' : ''}" onclick="event.stopPropagation(); showTaskModal(${taskIndex})">
+                                <div class="todo-task-item ${task.bucket} ${isDone ? 'completed' : ''}"
+                                     draggable="true"
+                                     data-task-id="${taskIndex}"
+                                     onclick="event.stopPropagation(); showTaskModal(${taskIndex})">
                                     <div class="todo-checkbox ${isDone ? 'checked' : ''}"
                                          onclick="event.stopPropagation(); toggleTaskComplete(${taskIndex})"></div>
                                     <div class="todo-task-content">
@@ -2487,6 +2493,7 @@
             cards.forEach(card => {
                 card.addEventListener('dragstart', (e) => {
                     card.classList.add('dragging');
+                    e.dataTransfer.setData('taskId', card.getAttribute('data-task-id'));
                 });
 
                 card.addEventListener('dragend', (e) => {
@@ -2502,8 +2509,129 @@
                 column.addEventListener('drop', (e) => {
                     e.preventDefault();
                     const dragging = document.querySelector('.dragging');
-                    if (dragging) {
-                        column.appendChild(dragging);
+                    const taskId = parseInt(e.dataTransfer.getData('taskId'));
+                    const newStatus = column.getAttribute('data-status');
+
+                    if (dragging && !isNaN(taskId)) {
+                        // Update task status
+                        tasks[taskId].status = newStatus;
+
+                        // Re-render all views
+                        renderBubbleView();
+                        renderKanbanView();
+                        renderTimelineView();
+
+                        showNotification(`✓ Task moved to ${newStatus.replace('-', ' ')}`, 'success');
+                    }
+                });
+            });
+        }
+
+        function setupTodoDragAndDrop() {
+            const todoItems = document.querySelectorAll('.todo-task-item');
+            const todoContainers = document.querySelectorAll('.todo-tasks');
+
+            todoItems.forEach(item => {
+                item.addEventListener('dragstart', (e) => {
+                    item.classList.add('dragging');
+                    e.dataTransfer.setData('taskId', item.getAttribute('data-task-id'));
+                });
+
+                item.addEventListener('dragend', (e) => {
+                    item.classList.remove('dragging');
+                });
+            });
+
+            todoContainers.forEach(container => {
+                container.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                });
+
+                container.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const dragging = document.querySelector('.todo-task-item.dragging');
+                    const taskId = parseInt(e.dataTransfer.getData('taskId'));
+                    const newDRI = container.getAttribute('data-dri');
+
+                    if (dragging && !isNaN(taskId)) {
+                        // Update task DRI (owner)
+                        tasks[taskId].owner = newDRI;
+
+                        // Re-render all views
+                        renderBubbleView();
+                        renderKanbanView();
+                        renderTimelineView();
+
+                        showNotification(`✓ Task reassigned to ${newDRI}`, 'success');
+                    }
+                });
+            });
+        }
+
+        function setupTimelineDragAndDrop(startDate, endDate) {
+            const timelineTasks = document.querySelectorAll('.timeline-task');
+            const swimlaneTracks = document.querySelectorAll('.swimlane-track');
+
+            timelineTasks.forEach(task => {
+                task.addEventListener('dragstart', (e) => {
+                    task.classList.add('dragging');
+                    e.dataTransfer.setData('taskId', task.getAttribute('data-task-id'));
+                    // Prevent click event when dragging
+                    e.stopPropagation();
+                });
+
+                task.addEventListener('dragend', (e) => {
+                    task.classList.remove('dragging');
+                });
+
+                // Prevent click when starting drag
+                task.addEventListener('mousedown', (e) => {
+                    task.setAttribute('data-drag-start', Date.now());
+                });
+
+                task.addEventListener('click', (e) => {
+                    const dragStart = task.getAttribute('data-drag-start');
+                    if (dragStart && (Date.now() - parseInt(dragStart)) > 200) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                    }
+                });
+            });
+
+            swimlaneTracks.forEach(track => {
+                track.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                });
+
+                track.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const dragging = document.querySelector('.timeline-task.dragging');
+                    const taskId = parseInt(e.dataTransfer.getData('taskId'));
+
+                    if (dragging && !isNaN(taskId)) {
+                        // Calculate the drop position as a percentage
+                        const rect = track.getBoundingClientRect();
+                        const offsetX = e.clientX - rect.left;
+                        const percentage = (offsetX / rect.width) * 100;
+
+                        // Convert percentage to date
+                        const totalDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
+                        const daysFromStart = (percentage / 100) * totalDays;
+                        const newDeadline = new Date(startDate);
+                        newDeadline.setDate(newDeadline.getDate() + Math.round(daysFromStart));
+
+                        // Format date as YYYY-MM-DD
+                        const newDeadlineStr = newDeadline.toISOString().split('T')[0];
+
+                        // Update task deadline
+                        tasks[taskId].deadline = newDeadlineStr;
+
+                        // Re-render all views
+                        renderBubbleView();
+                        renderKanbanView();
+                        renderTimelineView();
+
+                        showNotification(`✓ Task deadline updated to ${newDeadlineStr}`, 'success');
                     }
                 });
             });
