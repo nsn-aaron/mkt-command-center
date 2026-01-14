@@ -172,6 +172,26 @@
             gap: 8px;
             font-size: 0.9em;
             color: #9ca3af;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .legend-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: #ffffff;
+        }
+
+        .legend-item.active {
+            background: rgba(0, 212, 170, 0.1);
+            border-color: #00d4aa;
+            color: #00d4aa;
+        }
+
+        .legend-item.inactive {
+            opacity: 0.3;
         }
 
         .legend-dot {
@@ -259,6 +279,12 @@
             /* Animation handled by physics simulation */
         }
 
+        .bubble-wrapper.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0);
+        }
+
         .bubble-wrapper:hover {
             transform: scale(1.15) !important;
             z-index: 100;
@@ -323,9 +349,8 @@
         }
 
         .progress-ring.status-backlog { stroke: #6b7280; }
-        .progress-ring.status-planning { stroke: #3b82f6; }
         .progress-ring.status-in-progress { stroke: #f59e0b; }
-        .progress-ring.status-review { stroke: #8b5cf6; }
+        .progress-ring.status-review { stroke: #3b82f6; }
         .progress-ring.status-done { stroke: #10b981; }
 
         /* Kanban Styles */
@@ -363,9 +388,8 @@
         }
 
         .kanban-column.backlog .column-header { border-color: #6b7280; color: #9ca3af; }
-        .kanban-column.planning .column-header { border-color: #3b82f6; color: #60a5fa; }
         .kanban-column.in-progress .column-header { border-color: #f59e0b; color: #fbbf24; }
-        .kanban-column.review .column-header { border-color: #8b5cf6; color: #a78bfa; }
+        .kanban-column.review .column-header { border-color: #3b82f6; color: #60a5fa; }
         .kanban-column.done .column-header { border-color: #10b981; color: #34d399; }
 
         .kanban-cards {
@@ -581,7 +605,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.3);
             z-index: 1000;
             align-items: center;
             justify-content: center;
@@ -603,11 +627,48 @@
             border: 1px solid #1f2937;
         }
 
+        /* Slide-in Panel Styles */
+        #taskModal {
+            background: rgba(0, 0, 0, 0.3);
+            justify-content: flex-end;
+        }
+
+        #taskModal .modal-content {
+            max-width: 500px;
+            width: 500px;
+            height: 100vh;
+            max-height: 100vh;
+            border-radius: 0;
+            border-left: 1px solid #1f2937;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            margin: 0;
+        }
+
+        #taskModal.active .modal-content {
+            transform: translateX(0);
+        }
+
         .modal-header {
             font-size: 1.5em;
             font-weight: 700;
             margin-bottom: 20px;
             color: #ffffff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-close-icon {
+            cursor: pointer;
+            font-size: 1.5em;
+            color: #9ca3af;
+            transition: color 0.2s ease;
+            padding: 0 5px;
+        }
+
+        .modal-close-icon:hover {
+            color: #ef4444;
         }
 
         .modal-detail {
@@ -712,6 +773,22 @@
             background: #374151;
         }
 
+        .btn-delete {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid #ef4444;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-delete:hover {
+            background: #ef4444;
+            color: white;
+        }
+
         .markdown-output {
             background: #0f1419;
             border: 1px solid #374151;
@@ -781,9 +858,142 @@
             font-size: 0.8em;
             font-family: 'Inter', monospace;
             max-width: 400px;
+            max-height: 400px;
+            overflow-y: auto;
             display: none;
             border: 1px solid #00d4aa;
             z-index: 9999;
+        }
+
+        .error-log-btn {
+            background: #374151;
+            color: #9ca3af;
+            border: 1px solid #4b5563;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s ease;
+        }
+
+        .error-log-btn:hover {
+            background: #4b5563;
+            color: #00d4aa;
+        }
+
+        .error-log-btn.active {
+            background: #00d4aa;
+            color: #0a0e14;
+        }
+
+        /* Context Menu for Delete */
+        .context-menu {
+            display: none;
+            position: fixed;
+            background: #151a21;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            min-width: 150px;
+        }
+
+        .context-menu.active {
+            display: block;
+        }
+
+        .context-menu-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            color: #ffffff;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .context-menu-item:hover {
+            background: #1f2937;
+        }
+
+        .context-menu-item.delete {
+            color: #ef4444;
+        }
+
+        .context-menu-item.delete:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .delete-btn-kanban {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid #ef4444;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .delete-btn-kanban:hover {
+            background: #ef4444;
+            color: white;
+        }
+
+        /* Notification Toast */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #151a21;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            padding: 15px 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 10001;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 300px;
+            animation: slideIn 0.3s ease;
+            color: #ffffff;
+        }
+
+        .notification.success {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .notification.error {
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+
+        .notification.hiding {
+            animation: slideOut 0.3s ease;
         }
     </style>
 </head>
@@ -791,8 +1001,11 @@
     <div class="container">
         <div class="header">
             <h1>Marketing Operations Dashboard</h1>
-            <div class="refresh-indicator" id="refreshIndicator">
-                <span id="refreshStatus">Live</span>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button class="error-log-btn" id="errorLogBtn" onclick="toggleErrorLog()">Error Log</button>
+                <div class="refresh-indicator" id="refreshIndicator">
+                    <span id="refreshStatus">Live</span>
+                </div>
             </div>
         </div>
 
@@ -846,6 +1059,7 @@
             <div class="form-actions">
                 <button class="btn-primary" onclick="saveTaskNotes()">Save Changes</button>
                 <button class="btn-secondary" onclick="closeModal()">Close</button>
+                <button class="btn-delete" onclick="deleteTaskFromModal()">Delete Task</button>
             </div>
         </div>
     </div>
@@ -871,7 +1085,6 @@
                     <label class="form-label">Status *</label>
                     <select class="form-select" id="taskStatus" required>
                         <option value="backlog">Backlog</option>
-                        <option value="planning">Planning</option>
                         <option value="in-progress">In Progress</option>
                         <option value="review">Review</option>
                         <option value="done">Done</option>
@@ -886,16 +1099,22 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Owner</label>
-                    <input type="text" class="form-input" id="taskOwner" placeholder="[Team Member Name]">
+                    <label class="form-label">DRI</label>
+                    <select class="form-select" id="taskDRI">
+                        <option value="">Select DRI</option>
+                        <option value="Aaron">Aaron</option>
+                        <option value="Ingrid">Ingrid</option>
+                        <option value="Shaun">Shaun</option>
+                        <option value="Jarod">Jarod</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Deadline (YYYY-MM-DD)</label>
                     <input type="date" class="form-input" id="taskDeadline">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Dependencies</label>
-                    <input type="text" class="form-input" id="taskDependencies" placeholder="None">
+                    <label class="form-label">Dependency</label>
+                    <textarea class="form-textarea" id="taskDependency" placeholder="None"></textarea>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Notes</label>
@@ -916,10 +1135,18 @@
 
     <div class="debug-info" id="debugInfo"></div>
 
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item delete" onclick="confirmDeleteTask()">
+            🗑️ Delete Task
+        </div>
+    </div>
+
     <script>
         let tasks = [];
         let lastModified = null;
         let currentView = 'bubble';
+        let activeBucket = 'all';
+        let taskToDelete = null;
 
         // Parse markdown content
         async function loadMarkdownData() {
@@ -1000,13 +1227,19 @@
                         const status = line.replace('- **Status**:', '').trim().toLowerCase();
                         // Convert "In Progress" to "in-progress", etc.
                         currentTask.status = status.replace(/\s+/g, '-');
+                    } else if (line.startsWith('- **DRI**:')) {
+                        currentTask.owner = line.replace('- **DRI**:', '').trim();
                     } else if (line.startsWith('- **Owner**:')) {
+                        // Backwards compatibility
                         currentTask.owner = line.replace('- **Owner**:', '').trim();
                     } else if (line.startsWith('- **Priority**:')) {
                         currentTask.priority = line.replace('- **Priority**:', '').trim().toLowerCase();
                     } else if (line.startsWith('- **Deadline**:')) {
                         currentTask.deadline = line.replace('- **Deadline**:', '').trim();
+                    } else if (line.startsWith('- **Dependency**:')) {
+                        currentTask.dependencies = line.replace('- **Dependency**:', '').trim();
                     } else if (line.startsWith('- **Dependencies**:')) {
+                        // Backwards compatibility
                         currentTask.dependencies = line.replace('- **Dependencies**:', '').trim();
                     } else if (line.startsWith('- **Notes**:')) {
                         currentTask.notes = line.replace('- **Notes**:', '').trim();
@@ -1034,9 +1267,8 @@
         function initializeForceLayout(tasks, containerWidth, containerHeight) {
             // Initialize bubble nodes with physics properties
             bubbleNodes = tasks.map((task, index) => {
-                let size = 75; // low
-                if (task.priority === 'high') size = 130;
-                else if (task.priority === 'medium') size = 100;
+                // Size based on deadline urgency instead of priority
+                const size = getBubbleSizeFromDeadline(task.deadline);
 
                 // Start in center with slight random offset
                 return {
@@ -1065,6 +1297,22 @@
             function simulate() {
                 if (iterations >= maxIterations) {
                     simulationRunning = false;
+                    // Set final positions and stop all movement
+                    bubbleNodes.forEach((node, index) => {
+                        const element = document.querySelector(`.bubble-wrapper[data-index="${index}"]`);
+                        if (element) {
+                            element.style.left = `${node.x - node.size / 2}px`;
+                            element.style.top = `${node.y - node.size / 2}px`;
+                            // Remove transition to prevent any further animated movement
+                            element.style.transition = 'transform 0.3s ease'; // Keep only transform for hover
+                            node.vx = 0;
+                            node.vy = 0;
+                        }
+                    });
+                    if (animationId) {
+                        cancelAnimationFrame(animationId);
+                        animationId = null;
+                    }
                     return;
                 }
 
@@ -1151,12 +1399,36 @@
         function getStatusProgress(status) {
             const statusMap = {
                 'backlog': 0,
-                'planning': 25,
-                'in-progress': 50,
-                'review': 75,
+                'in-progress': 33,
+                'review': 66,
                 'done': 100
             };
             return statusMap[status] || 0;
+        }
+
+        // Calculate bubble size based on deadline urgency
+        function getBubbleSizeFromDeadline(deadline) {
+            if (!deadline || deadline === 'TBD') {
+                return 75; // Default small size for tasks without deadline
+            }
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const deadlineDate = new Date(deadline);
+            const daysUntil = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));
+
+            // Closer deadlines = larger bubbles
+            // Overdue or very soon (0-7 days) = 130px (large)
+            // Medium term (8-30 days) = 100px (medium)
+            // Long term (31+ days) = 75px (small)
+
+            if (daysUntil <= 7) {
+                return 130; // Very urgent
+            } else if (daysUntil <= 30) {
+                return 100; // Moderately urgent
+            } else {
+                return 75; // Not urgent
+            }
         }
 
         // Render bubble map view
@@ -1198,7 +1470,6 @@
             // Status label formatter
             const statusLabels = {
                 'backlog': 'Backlog',
-                'planning': 'Planning',
                 'in-progress': 'In Progress',
                 'review': 'Review',
                 'done': 'Done'
@@ -1207,15 +1478,18 @@
             container.innerHTML = `
                 <div class="bubble-map-header">
                     <div class="bubble-legend">
-                        <div class="legend-item">
+                        <div class="legend-item active" onclick="filterBubbles('all')">
+                            <span style="font-weight: 600;">All</span>
+                        </div>
+                        <div class="legend-item active" onclick="filterBubbles('production')">
                             <div class="legend-dot production"></div>
                             <span>Production</span>
                         </div>
-                        <div class="legend-item">
+                        <div class="legend-item active" onclick="filterBubbles('presence')">
                             <div class="legend-dot presence"></div>
                             <span>Presence</span>
                         </div>
-                        <div class="legend-item">
+                        <div class="legend-item active" onclick="filterBubbles('push')">
                             <div class="legend-dot push"></div>
                             <span>Push</span>
                         </div>
@@ -1227,26 +1501,30 @@
                         ${tasks.map((task, idx) => {
                             const pos = positions[idx];
                             const animationDelay = Math.random() * 3;
-                            const size = task.priority === 'high' ? 130 : task.priority === 'medium' ? 100 : 75;
+                            const size = getBubbleSizeFromDeadline(task.deadline);
                             const progress = getStatusProgress(task.status);
                             const radius = size / 2;
                             const circumference = 2 * Math.PI * (radius - 2);
                             const progressOffset = circumference - (progress / 100) * circumference;
 
+                            // Determine text length based on bubble size
+                            const maxTextLength = size === 130 ? 35 : size === 100 ? 25 : 18;
+
                             return `
-                                <div class="bubble-wrapper" data-index="${idx}" style="left: ${pos.x}px; top: ${pos.y}px; width: ${size}px; height: ${size}px; transition: all 0.3s ease;">
+                                <div class="bubble-wrapper" data-index="${idx}" style="left: ${pos.x}px; top: ${pos.y}px; width: ${size}px; height: ${size}px;">
                                     <svg class="bubble-svg" width="${size}" height="${size}">
                                         <circle class="progress-ring-bg" cx="${radius}" cy="${radius}" r="${radius - 2}"/>
                                         <circle class="progress-ring status-${task.status}" cx="${radius}" cy="${radius}" r="${radius - 2}"
                                                 stroke-dasharray="${circumference}"
                                                 stroke-dashoffset="${progressOffset}"/>
                                     </svg>
-                                    <div class="bubble priority-${task.priority} bucket-${task.bucket}"
+                                    <div class="bubble bucket-${task.bucket}"
                                          style="width: ${size - 8}px; height: ${size - 8}px;"
                                          onclick="showTaskModal(${idx})"
+                                         oncontextmenu="showContextMenu(event, ${idx}); return false;"
                                          title="${task.task}\nStatus: ${statusLabels[task.status]}\nBucket: ${task.bucket.toUpperCase()}">
                                         <span class="bucket-badge ${task.bucket}">${task.bucket.substring(0, 4)}</span>
-                                        ${truncateText(task.task, task.priority === 'high' ? 35 : task.priority === 'medium' ? 25 : 18)}
+                                        ${truncateText(task.task, maxTextLength)}
                                     </div>
                                 </div>
                             `;
@@ -1259,10 +1537,9 @@
         // Render kanban view
         function renderKanbanView() {
             const board = document.getElementById('kanbanBoard');
-            const statuses = ['backlog', 'planning', 'in-progress', 'review', 'done'];
+            const statuses = ['backlog', 'in-progress', 'review', 'done'];
             const statusLabels = {
                 'backlog': 'Backlog',
-                'planning': 'Planning',
                 'in-progress': 'In Progress',
                 'review': 'Review',
                 'done': 'Done'
@@ -1277,19 +1554,24 @@
                             <span class="count">${statusTasks.length}</span>
                         </div>
                         <div class="kanban-cards" data-status="${status}">
-                            ${statusTasks.map((task) => `
+                            ${statusTasks.map((task) => {
+                                const taskIndex = tasks.indexOf(task);
+                                return `
                                 <div class="kanban-card ${task.bucket}"
                                      draggable="true"
-                                     data-task-id="${tasks.indexOf(task)}"
-                                     onclick="showTaskModal(${tasks.indexOf(task)})">
-                                    <div class="card-title">${task.task}</div>
+                                     data-task-id="${taskIndex}">
+                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                                        <div class="card-title" style="flex: 1; margin: 0;" onclick="showTaskModal(${taskIndex})">${task.task}</div>
+                                        <button class="delete-btn-kanban" onclick="event.stopPropagation(); if(confirm('Delete this task?')) deleteTask(${taskIndex});">×</button>
+                                    </div>
                                     <div class="card-meta">
                                         <span class="card-badge bucket ${task.bucket}">${task.bucket}</span>
                                         <span class="card-badge priority ${task.priority}">${task.priority}</span>
                                         <span class="card-badge deadline ${isOverdue(task.deadline) ? 'overdue' : ''}">${task.deadline}</span>
                                     </div>
                                 </div>
-                            `).join('')}
+                            `;
+                            }).join('')}
                         </div>
                     </div>
                 `;
@@ -1349,7 +1631,10 @@
             const header = document.getElementById('modalHeader');
             const body = document.getElementById('modalBody');
 
-            header.textContent = `Edit Task: ${task.task}`;
+            header.innerHTML = `
+                <span>Edit Task</span>
+                <span class="modal-close-icon" onclick="closeModal()">×</span>
+            `;
             body.innerHTML = `
                 <div class="form-group">
                     <label class="form-label">Task Name</label>
@@ -1367,7 +1652,6 @@
                     <label class="form-label">Status</label>
                     <select class="form-select" id="taskStatusEdit">
                         <option value="backlog" ${task.status === 'backlog' ? 'selected' : ''}>Backlog</option>
-                        <option value="planning" ${task.status === 'planning' ? 'selected' : ''}>Planning</option>
                         <option value="in-progress" ${task.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
                         <option value="review" ${task.status === 'review' ? 'selected' : ''}>Review</option>
                         <option value="done" ${task.status === 'done' ? 'selected' : ''}>Done</option>
@@ -1382,16 +1666,22 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Owner</label>
-                    <input type="text" class="form-input" id="taskOwnerEdit" value="${task.owner}">
+                    <label class="form-label">DRI</label>
+                    <select class="form-select" id="taskDRIEdit">
+                        <option value="">Select DRI</option>
+                        <option value="Aaron" ${task.owner === 'Aaron' ? 'selected' : ''}>Aaron</option>
+                        <option value="Ingrid" ${task.owner === 'Ingrid' ? 'selected' : ''}>Ingrid</option>
+                        <option value="Shaun" ${task.owner === 'Shaun' ? 'selected' : ''}>Shaun</option>
+                        <option value="Jarod" ${task.owner === 'Jarod' ? 'selected' : ''}>Jarod</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Deadline</label>
                     <input type="text" class="form-input" id="taskDeadlineEdit" value="${task.deadline}" placeholder="YYYY-MM-DD">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Dependencies</label>
-                    <input type="text" class="form-input" id="taskDependenciesEdit" value="${task.dependencies}">
+                    <label class="form-label">Dependency</label>
+                    <textarea class="form-textarea" id="taskDependencyEdit">${task.dependencies}</textarea>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Notes</label>
@@ -1411,47 +1701,42 @@
                 bucket: document.getElementById('taskBucketEdit').value,
                 status: document.getElementById('taskStatusEdit').value,
                 priority: document.getElementById('taskPriorityEdit').value,
-                owner: document.getElementById('taskOwnerEdit').value,
+                owner: document.getElementById('taskDRIEdit').value,
                 deadline: document.getElementById('taskDeadlineEdit').value,
-                dependencies: document.getElementById('taskDependenciesEdit').value,
+                dependencies: document.getElementById('taskDependencyEdit').value,
                 notes: document.getElementById('taskNotesEdit').value
             };
 
             // Update task in memory
             Object.assign(tasks[currentTaskId], updatedTask);
 
-            // Status label mapping for markdown
-            const statusLabels = {
-                'backlog': 'Backlog',
-                'planning': 'Planning',
-                'in-progress': 'In Progress',
-                'review': 'Review',
-                'done': 'Done'
-            };
-
-            // Generate complete markdown for updated task
-            const markdown = `- **Task**: ${updatedTask.task}
-- **Status**: ${statusLabels[updatedTask.status]}
-- **Owner**: ${updatedTask.owner}
-- **Priority**: ${updatedTask.priority.charAt(0).toUpperCase() + updatedTask.priority.slice(1)}
-- **Deadline**: ${updatedTask.deadline}
-- **Dependencies**: ${updatedTask.dependencies}
-- **Notes**: ${updatedTask.notes}`;
-
             // Re-render all views to show updates immediately
             renderBubbleView();
             renderKanbanView();
             renderTimelineView();
 
-            // Show updated markdown
-            alert(`Task updated in dashboard!\n\nTo persist changes to the markdown file, replace the task entry with:\n\n${markdown}`);
-
+            // Close modal with success feedback
             closeModal();
+
+            // Show success notification
+            showNotification('✓ Task updated successfully in dashboard!', 'success');
         }
 
         function closeModal() {
             document.getElementById('taskModal').classList.remove('active');
             currentTaskId = null;
+        }
+
+        function deleteTaskFromModal() {
+            if (currentTaskId === null) return;
+
+            const task = tasks[currentTaskId];
+            const confirmMsg = `Are you sure you want to delete this task?\n\n"${task.task}"`;
+
+            if (confirm(confirmMsg)) {
+                closeModal();
+                deleteTask(currentTaskId);
+            }
         }
 
         // Add task modal functions
@@ -1472,15 +1757,14 @@
             const bucket = document.getElementById('taskBucket').value;
             const status = document.getElementById('taskStatus').value;
             const priority = document.getElementById('taskPriority').value;
-            const owner = document.getElementById('taskOwner').value || '[Team Member Name]';
+            const dri = document.getElementById('taskDRI').value || '[Team Member Name]';
             const deadline = document.getElementById('taskDeadline').value || 'TBD';
-            const dependencies = document.getElementById('taskDependencies').value || 'None';
+            const dependency = document.getElementById('taskDependency').value || 'None';
             const notes = document.getElementById('taskNotes').value || '';
 
             // Format status for markdown
             const statusMap = {
                 'backlog': 'Backlog',
-                'planning': 'Planning',
                 'in-progress': 'In Progress',
                 'review': 'Review',
                 'done': 'Done'
@@ -1488,10 +1772,10 @@
 
             const markdown = `- **Task**: ${taskName}
 - **Status**: ${statusMap[status]}
-- **Owner**: ${owner}
+- **DRI**: ${dri}
 - **Priority**: ${priority.charAt(0).toUpperCase() + priority.slice(1)}
 - **Deadline**: ${deadline}
-- **Dependencies**: ${dependencies}
+- **Dependency**: ${dependency}
 - **Notes**: ${notes}`;
 
             document.getElementById('generatedMarkdown').textContent = markdown;
@@ -1507,12 +1791,13 @@
                 const btn = document.getElementById('copyBtn');
                 btn.textContent = '✓ Copied!';
                 btn.classList.add('copied');
+                showNotification('✓ Markdown copied to clipboard!', 'success');
                 setTimeout(() => {
                     btn.textContent = 'Copy to Clipboard';
                     btn.classList.remove('copied');
                 }, 2000);
             }).catch(err => {
-                alert('Failed to copy. Please copy manually.');
+                showNotification('Failed to copy. Please copy manually.', 'error');
             });
         }
 
@@ -1586,8 +1871,120 @@
             const debug = document.getElementById('debugInfo');
             const timestamp = new Date().toLocaleTimeString();
             const currentText = debug.textContent || '';
-            debug.textContent = `[${timestamp}] ${message}\n${currentText}`.substring(0, 500);
-            debug.style.display = 'block';
+            debug.textContent = `[${timestamp}] ${message}\n${currentText}`.substring(0, 2000);
+        }
+
+        function toggleErrorLog() {
+            const debug = document.getElementById('debugInfo');
+            const btn = document.getElementById('errorLogBtn');
+
+            if (debug.style.display === 'block') {
+                debug.style.display = 'none';
+                btn.classList.remove('active');
+            } else {
+                debug.style.display = 'block';
+                btn.classList.add('active');
+            }
+        }
+
+        function filterBubbles(bucket) {
+            activeBucket = bucket;
+
+            // Update legend item styles
+            document.querySelectorAll('.bubble-legend .legend-item').forEach(item => {
+                item.classList.remove('active', 'inactive');
+            });
+
+            // Show/hide bubbles based on filter
+            tasks.forEach((task, index) => {
+                const wrapper = document.querySelector(`.bubble-wrapper[data-index="${index}"]`);
+                if (wrapper) {
+                    if (bucket === 'all' || task.bucket === bucket) {
+                        wrapper.classList.remove('hidden');
+                    } else {
+                        wrapper.classList.add('hidden');
+                    }
+                }
+            });
+
+            // Update legend items appearance
+            if (bucket === 'all') {
+                document.querySelectorAll('.bubble-legend .legend-item').forEach(item => {
+                    item.classList.add('active');
+                });
+            } else {
+                document.querySelectorAll('.bubble-legend .legend-item').forEach(item => {
+                    const itemBucket = item.textContent.trim().toLowerCase();
+                    if (itemBucket === bucket) {
+                        item.classList.add('active');
+                    } else {
+                        item.classList.add('inactive');
+                    }
+                });
+            }
+        }
+
+        // Context menu handling
+        function showContextMenu(event, taskId) {
+            event.preventDefault();
+            taskToDelete = taskId;
+
+            const menu = document.getElementById('contextMenu');
+            menu.style.left = `${event.pageX}px`;
+            menu.style.top = `${event.pageY}px`;
+            menu.classList.add('active');
+        }
+
+        function hideContextMenu() {
+            document.getElementById('contextMenu').classList.remove('active');
+        }
+
+        function confirmDeleteTask() {
+            if (taskToDelete === null) return;
+
+            const task = tasks[taskToDelete];
+            const confirmMsg = `Are you sure you want to delete this task?\n\n"${task.task}"\n\nThis will only remove it from the dashboard. To permanently delete, remove it from the markdown file.`;
+
+            if (confirm(confirmMsg)) {
+                deleteTask(taskToDelete);
+            }
+
+            hideContextMenu();
+            taskToDelete = null;
+        }
+
+        function deleteTask(taskId) {
+            // Remove task from array
+            tasks.splice(taskId, 1);
+
+            // Re-render all views
+            renderBubbleView();
+            renderKanbanView();
+            renderTimelineView();
+
+            showNotification('✓ Task deleted from dashboard', 'success');
+        }
+
+        // Notification system
+        function showNotification(message, type = 'success') {
+            // Remove any existing notifications
+            const existing = document.querySelectorAll('.notification');
+            existing.forEach(n => n.remove());
+
+            // Create notification
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+
+            document.body.appendChild(notification);
+
+            // Auto-remove after 3 seconds
+            setTimeout(() => {
+                notification.classList.add('hiding');
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 3000);
         }
 
         // Refresh data
@@ -1656,6 +2053,13 @@
         document.getElementById('addTaskModal').addEventListener('click', (e) => {
             if (e.target.id === 'addTaskModal') {
                 closeAddTaskModal();
+            }
+        });
+
+        // Hide context menu on any click
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.context-menu')) {
+                hideContextMenu();
             }
         });
 
