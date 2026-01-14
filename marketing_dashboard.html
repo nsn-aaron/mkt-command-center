@@ -322,6 +322,12 @@
             transition: stroke-dashoffset 0.5s ease;
         }
 
+        .progress-ring.status-backlog { stroke: #6b7280; }
+        .progress-ring.status-planning { stroke: #3b82f6; }
+        .progress-ring.status-in-progress { stroke: #f59e0b; }
+        .progress-ring.status-review { stroke: #8b5cf6; }
+        .progress-ring.status-done { stroke: #10b981; }
+
         /* Kanban Styles */
         .kanban-board {
             display: grid;
@@ -838,7 +844,7 @@
             <div class="modal-header" id="modalHeader"></div>
             <div id="modalBody"></div>
             <div class="form-actions">
-                <button class="btn-primary" onclick="saveTaskNotes()">Save Notes</button>
+                <button class="btn-primary" onclick="saveTaskNotes()">Save Changes</button>
                 <button class="btn-secondary" onclick="closeModal()">Close</button>
             </div>
         </div>
@@ -1231,7 +1237,7 @@
                                 <div class="bubble-wrapper" data-index="${idx}" style="left: ${pos.x}px; top: ${pos.y}px; width: ${size}px; height: ${size}px; transition: all 0.3s ease;">
                                     <svg class="bubble-svg" width="${size}" height="${size}">
                                         <circle class="progress-ring-bg" cx="${radius}" cy="${radius}" r="${radius - 2}"/>
-                                        <circle class="progress-ring" cx="${radius}" cy="${radius}" r="${radius - 2}"
+                                        <circle class="progress-ring status-${task.status}" cx="${radius}" cy="${radius}" r="${radius - 2}"
                                                 stroke-dasharray="${circumference}"
                                                 stroke-dashoffset="${progressOffset}"/>
                                     </svg>
@@ -1343,43 +1349,53 @@
             const header = document.getElementById('modalHeader');
             const body = document.getElementById('modalBody');
 
-            const statusLabels = {
-                'backlog': 'Backlog',
-                'planning': 'Planning',
-                'in-progress': 'In Progress',
-                'review': 'Review',
-                'done': 'Done'
-            };
-
-            header.textContent = task.task;
+            header.textContent = `Edit Task: ${task.task}`;
             body.innerHTML = `
-                <div class="modal-detail">
-                    <div class="modal-detail-label">Bucket</div>
-                    <div class="modal-detail-value">${task.bucket.toUpperCase()}</div>
+                <div class="form-group">
+                    <label class="form-label">Task Name</label>
+                    <input type="text" class="form-input" id="taskNameEdit" value="${task.task}">
                 </div>
-                <div class="modal-detail">
-                    <div class="modal-detail-label">Status</div>
-                    <div class="modal-detail-value">${statusLabels[task.status] || task.status}</div>
+                <div class="form-group">
+                    <label class="form-label">Bucket</label>
+                    <select class="form-select" id="taskBucketEdit">
+                        <option value="production" ${task.bucket === 'production' ? 'selected' : ''}>Production</option>
+                        <option value="presence" ${task.bucket === 'presence' ? 'selected' : ''}>Presence</option>
+                        <option value="push" ${task.bucket === 'push' ? 'selected' : ''}>Push</option>
+                    </select>
                 </div>
-                <div class="modal-detail">
-                    <div class="modal-detail-label">Owner</div>
-                    <div class="modal-detail-value">${task.owner}</div>
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" id="taskStatusEdit">
+                        <option value="backlog" ${task.status === 'backlog' ? 'selected' : ''}>Backlog</option>
+                        <option value="planning" ${task.status === 'planning' ? 'selected' : ''}>Planning</option>
+                        <option value="in-progress" ${task.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
+                        <option value="review" ${task.status === 'review' ? 'selected' : ''}>Review</option>
+                        <option value="done" ${task.status === 'done' ? 'selected' : ''}>Done</option>
+                    </select>
                 </div>
-                <div class="modal-detail">
-                    <div class="modal-detail-label">Priority</div>
-                    <div class="modal-detail-value">${task.priority.toUpperCase()}</div>
+                <div class="form-group">
+                    <label class="form-label">Priority</label>
+                    <select class="form-select" id="taskPriorityEdit">
+                        <option value="high" ${task.priority === 'high' ? 'selected' : ''}>High</option>
+                        <option value="medium" ${task.priority === 'medium' ? 'selected' : ''}>Medium</option>
+                        <option value="low" ${task.priority === 'low' ? 'selected' : ''}>Low</option>
+                    </select>
                 </div>
-                <div class="modal-detail">
-                    <div class="modal-detail-label">Deadline</div>
-                    <div class="modal-detail-value">${task.deadline}</div>
+                <div class="form-group">
+                    <label class="form-label">Owner</label>
+                    <input type="text" class="form-input" id="taskOwnerEdit" value="${task.owner}">
                 </div>
-                <div class="modal-detail">
-                    <div class="modal-detail-label">Dependencies</div>
-                    <div class="modal-detail-value">${task.dependencies}</div>
+                <div class="form-group">
+                    <label class="form-label">Deadline</label>
+                    <input type="text" class="form-input" id="taskDeadlineEdit" value="${task.deadline}" placeholder="YYYY-MM-DD">
                 </div>
-                <div class="modal-detail">
-                    <div class="modal-detail-label">Notes (Editable)</div>
-                    <textarea class="form-textarea" id="taskNotesEdit" style="margin-top: 10px;">${task.notes}</textarea>
+                <div class="form-group">
+                    <label class="form-label">Dependencies</label>
+                    <input type="text" class="form-input" id="taskDependenciesEdit" value="${task.dependencies}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Notes</label>
+                    <textarea class="form-textarea" id="taskNotesEdit">${task.notes}</textarea>
                 </div>
             `;
 
@@ -1389,14 +1405,46 @@
         function saveTaskNotes() {
             if (currentTaskId === null) return;
 
-            const newNotes = document.getElementById('taskNotesEdit').value;
-            tasks[currentTaskId].notes = newNotes;
+            // Get all updated values
+            const updatedTask = {
+                task: document.getElementById('taskNameEdit').value,
+                bucket: document.getElementById('taskBucketEdit').value,
+                status: document.getElementById('taskStatusEdit').value,
+                priority: document.getElementById('taskPriorityEdit').value,
+                owner: document.getElementById('taskOwnerEdit').value,
+                deadline: document.getElementById('taskDeadlineEdit').value,
+                dependencies: document.getElementById('taskDependenciesEdit').value,
+                notes: document.getElementById('taskNotesEdit').value
+            };
 
-            // Show markdown snippet to update
-            const task = tasks[currentTaskId];
-            const markdown = `- **Notes**: ${newNotes}`;
+            // Update task in memory
+            Object.assign(tasks[currentTaskId], updatedTask);
 
-            alert(`Notes updated!\n\nTo persist this change, update the markdown file with:\n${markdown}\n\nFor task: "${task.task}"`);
+            // Status label mapping for markdown
+            const statusLabels = {
+                'backlog': 'Backlog',
+                'planning': 'Planning',
+                'in-progress': 'In Progress',
+                'review': 'Review',
+                'done': 'Done'
+            };
+
+            // Generate complete markdown for updated task
+            const markdown = `- **Task**: ${updatedTask.task}
+- **Status**: ${statusLabels[updatedTask.status]}
+- **Owner**: ${updatedTask.owner}
+- **Priority**: ${updatedTask.priority.charAt(0).toUpperCase() + updatedTask.priority.slice(1)}
+- **Deadline**: ${updatedTask.deadline}
+- **Dependencies**: ${updatedTask.dependencies}
+- **Notes**: ${updatedTask.notes}`;
+
+            // Re-render all views to show updates immediately
+            renderBubbleView();
+            renderKanbanView();
+            renderTimelineView();
+
+            // Show updated markdown
+            alert(`Task updated in dashboard!\n\nTo persist changes to the markdown file, replace the task entry with:\n\n${markdown}`);
 
             closeModal();
         }
