@@ -1056,8 +1056,7 @@
             display: grid;
             grid-template-columns: 150px 1fr;
             gap: 20px;
-            align-items: center;
-            min-height: 80px;
+            align-items: start;
             margin-bottom: 15px;
             border-bottom: 1px solid #1f2937;
             padding-bottom: 15px;
@@ -1074,6 +1073,8 @@
             border-radius: 8px;
             background: #151a21;
             border-left: 4px solid;
+            align-self: start;
+            margin-top: 5px;
         }
 
         .swimlane-label.production { border-left-color: #3b82f6; color: #60a5fa; }
@@ -1082,28 +1083,30 @@
 
         .swimlane-track {
             position: relative;
-            height: 60px;
+            height: 90px;
+            max-height: 90px;
             background: #151a21;
             border-radius: 8px;
-            overflow: visible;
+            overflow: hidden;
+            padding: 5px 0;
         }
 
         .timeline-task {
             position: absolute;
-            height: 45px;
-            border-radius: 6px;
-            padding: 8px 12px;
+            height: 22px;
+            border-radius: 4px;
+            padding: 4px 8px;
             cursor: pointer;
             transition: all 0.2s ease;
-            font-size: 0.85em;
+            font-size: 0.7em;
             font-weight: 600;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            border: 2px solid transparent;
+            border: 1px solid transparent;
             display: flex;
             align-items: center;
-            top: 7px;
+            min-width: 60px;
         }
 
         .timeline-task:hover {
@@ -1240,6 +1243,7 @@
             align-items: center;
             gap: 8px;
             font-size: 0.85em;
+            color: #9ca3af;
         }
 
         .legend-color-box {
@@ -1817,8 +1821,8 @@
         function renderSwimlane(label, bucket, bucketTasks, startDate, endDate) {
             const totalDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
 
-            // Position tasks on timeline
-            const taskBars = bucketTasks
+            // Prepare task data with positions
+            const taskData = bucketTasks
                 .filter(t => t.deadline && t.deadline !== 'TBD')
                 .map(task => {
                     const deadline = new Date(task.deadline);
@@ -1831,20 +1835,74 @@
                     // Determine risk level
                     const riskLevel = getTaskRiskLevel(task);
 
-                    return `
-                        <div class="timeline-task risk-${riskLevel}"
-                             style="left: ${position}%;"
-                             onclick="showTaskModal(${taskIndex})"
-                             title="${task.task} - ${task.deadline}">
-                            ${truncateText(task.task, 20)}
-                        </div>
-                    `;
-                }).join('');
+                    return {
+                        task,
+                        taskIndex,
+                        position,
+                        riskLevel,
+                        width: 8 // assume 8% width per task
+                    };
+                })
+                .sort((a, b) => a.position - b.position); // Sort by position
+
+            // Calculate vertical rows to avoid overlaps (max 3 rows)
+            const rows = [];
+            const maxRows = 3;
+
+            taskData.forEach(taskItem => {
+                let placed = false;
+
+                // Try to place in existing rows
+                for (let rowIndex = 0; rowIndex < Math.min(rows.length, maxRows); rowIndex++) {
+                    const row = rows[rowIndex];
+                    const overlaps = row.some(existing => {
+                        const gap = 1; // minimum gap between tasks
+                        return (taskItem.position < existing.position + existing.width + gap) &&
+                               (taskItem.position + taskItem.width + gap > existing.position);
+                    });
+
+                    if (!overlaps) {
+                        row.push(taskItem);
+                        taskItem.row = rowIndex;
+                        placed = true;
+                        break;
+                    }
+                }
+
+                // Create new row if couldn't place in existing rows (up to max)
+                if (!placed && rows.length < maxRows) {
+                    taskItem.row = rows.length;
+                    rows.push([taskItem]);
+                    placed = true;
+                }
+
+                // If still not placed (too many tasks), stack in last row
+                if (!placed) {
+                    taskItem.row = maxRows - 1;
+                    rows[maxRows - 1].push(taskItem);
+                }
+            });
+
+            // Render task bars with vertical positioning
+            const taskBars = taskData.map(({ task, taskIndex, position, riskLevel, row }) => {
+                const topPosition = 5 + (row * 27); // 22px height + 5px gap
+
+                return `
+                    <div class="timeline-task risk-${riskLevel}"
+                         style="left: ${position}%; top: ${topPosition}px;"
+                         onclick="showTaskModal(${taskIndex})"
+                         title="${task.task} - ${task.deadline}">
+                        ${truncateText(task.task, 12)}
+                    </div>
+                `;
+            }).join('');
+
+            const trackHeight = 90; // Fixed height
 
             return `
                 <div class="swimlane">
                     <div class="swimlane-label ${bucket}">${label}</div>
-                    <div class="swimlane-track">
+                    <div class="swimlane-track" style="min-height: ${trackHeight}px;">
                         ${taskBars}
                     </div>
                 </div>
