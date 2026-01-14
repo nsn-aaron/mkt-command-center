@@ -256,17 +256,13 @@
         .bucket-badge.push { border-color: #00d4aa; }
 
         .bubble-wrapper {
-            animation: float 6s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
+            /* Animation handled by physics simulation */
         }
 
         .bubble-wrapper:hover {
-            transform: scale(1.15) translateY(-10px) !important;
+            transform: scale(1.15) !important;
             z-index: 100;
+            transition: transform 0.3s ease !important;
         }
 
         .bubble-wrapper:hover .bubble {
@@ -1024,64 +1020,125 @@
             return parsedTasks;
         }
 
-        // Generate organic bubble positions with NO overlaps
-        function generateBubblePositions(tasks, containerWidth, containerHeight) {
-            const positions = [];
-            const padding = 30;
-            const minSpacing = 15; // Minimum space between bubbles
+        // Force-directed layout simulation
+        let bubbleNodes = [];
+        let animationId = null;
+        let simulationRunning = false;
 
-            tasks.forEach((task, index) => {
+        function initializeForceLayout(tasks, containerWidth, containerHeight) {
+            // Initialize bubble nodes with physics properties
+            bubbleNodes = tasks.map((task, index) => {
                 let size = 75; // low
                 if (task.priority === 'high') size = 130;
                 else if (task.priority === 'medium') size = 100;
 
-                let placed = false;
-                let attempts = 0;
-                let x, y;
-
-                while (!placed && attempts < 200) {
-                    // Random position within container bounds
-                    x = Math.random() * (containerWidth - size - padding * 2) + padding;
-                    y = Math.random() * (containerHeight - size - padding * 2) + padding;
-
-                    // Check for overlaps with existing bubbles
-                    let overlap = false;
-                    for (let pos of positions) {
-                        const dx = (x + size/2) - (pos.x + pos.size/2);
-                        const dy = (y + size/2) - (pos.y + pos.size/2);
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        const minDistance = (size + pos.size) / 2 + minSpacing;
-
-                        if (distance < minDistance) {
-                            overlap = true;
-                            break;
-                        }
-                    }
-
-                    if (!overlap) {
-                        placed = true;
-                    }
-                    attempts++;
-                }
-
-                // If couldn't place without overlap after 200 attempts, use grid-based layout
-                if (!placed) {
-                    const cols = Math.ceil(Math.sqrt(tasks.length));
-                    const row = Math.floor(index / cols);
-                    const col = index % cols;
-                    const spacing = Math.max(size + 20, (containerWidth - padding * 2) / cols);
-                    x = padding + col * spacing + (Math.random() - 0.5) * 20;
-                    y = padding + row * spacing + (Math.random() - 0.5) * 20;
-
-                    // Make sure it's within bounds
-                    x = Math.max(padding, Math.min(containerWidth - size - padding, x));
-                    y = Math.max(padding, Math.min(containerHeight - size - padding, y));
-                }
-
-                positions.push({ x, y, size });
+                // Start in center with slight random offset
+                return {
+                    x: containerWidth / 2 + (Math.random() - 0.5) * 200,
+                    y: containerHeight / 2 + (Math.random() - 0.5) * 200,
+                    vx: 0,
+                    vy: 0,
+                    size: size,
+                    bucket: task.bucket,
+                    index: index
+                };
             });
 
-            return positions;
+            // Define bucket centers for loose clustering
+            const bucketCenters = {
+                'production': { x: containerWidth * 0.3, y: containerHeight * 0.5 },
+                'presence': { x: containerWidth * 0.5, y: containerHeight * 0.5 },
+                'push': { x: containerWidth * 0.7, y: containerHeight * 0.5 }
+            };
+
+            // Run physics simulation
+            simulationRunning = true;
+            let iterations = 0;
+            const maxIterations = 300;
+
+            function simulate() {
+                if (iterations >= maxIterations) {
+                    simulationRunning = false;
+                    return;
+                }
+
+                // Apply forces
+                bubbleNodes.forEach((node, i) => {
+                    let fx = 0, fy = 0;
+
+                    // Repulsion from other bubbles
+                    bubbleNodes.forEach((other, j) => {
+                        if (i !== j) {
+                            const dx = node.x - other.x;
+                            const dy = node.y - other.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                            const minDist = (node.size + other.size) / 2 + 20;
+
+                            if (dist < minDist * 3) {
+                                const force = (minDist - dist) / dist * 0.5;
+                                fx += dx * force;
+                                fy += dy * force;
+                            }
+                        }
+                    });
+
+                    // Weak attraction to bucket center
+                    const center = bucketCenters[node.bucket];
+                    if (center) {
+                        const dx = center.x - node.x;
+                        const dy = center.y - node.y;
+                        fx += dx * 0.001;
+                        fy += dy * 0.001;
+                    }
+
+                    // Boundary forces (keep in canvas)
+                    const margin = node.size / 2 + 20;
+                    if (node.x < margin) fx += (margin - node.x) * 0.1;
+                    if (node.x > containerWidth - margin) fx += (containerWidth - margin - node.x) * 0.1;
+                    if (node.y < margin) fy += (margin - node.y) * 0.1;
+                    if (node.y > containerHeight - margin) fy += (containerHeight - margin - node.y) * 0.1;
+
+                    // Apply forces to velocity
+                    node.vx += fx;
+                    node.vy += fy;
+
+                    // Dampening
+                    node.vx *= 0.85;
+                    node.vy *= 0.85;
+
+                    // Update position
+                    node.x += node.vx;
+                    node.y += node.vy;
+
+                    // Clamp to bounds
+                    node.x = Math.max(margin, Math.min(containerWidth - margin, node.x));
+                    node.y = Math.max(margin, Math.min(containerHeight - margin, node.y));
+                });
+
+                // Update visual positions
+                updateBubblePositions();
+
+                iterations++;
+                if (simulationRunning) {
+                    animationId = requestAnimationFrame(simulate);
+                }
+            }
+
+            // Start simulation
+            simulate();
+
+            // Return initial positions for rendering
+            return bubbleNodes.map(node => ({ x: node.x - node.size / 2, y: node.y - node.size / 2, size: node.size }));
+        }
+
+        function updateBubblePositions() {
+            bubbleNodes.forEach((node, index) => {
+                const element = document.querySelector(`.bubble-wrapper[data-index="${index}"]`);
+                if (element) {
+                    element.style.left = `${node.x - node.size / 2}px`;
+                    element.style.top = `${node.y - node.size / 2}px`;
+                }
+            });
         }
 
         // Calculate progress percentage from status
@@ -1123,8 +1180,14 @@
                 </div>
             `;
 
-            // Generate positions for all tasks in a single canvas
-            const positions = generateBubblePositions(tasks, 1260, 650);
+            // Stop any existing simulation
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                simulationRunning = false;
+            }
+
+            // Initialize force-directed layout
+            const positions = initializeForceLayout(tasks, 1260, 650);
 
             // Status label formatter
             const statusLabels = {
@@ -1165,7 +1228,7 @@
                             const progressOffset = circumference - (progress / 100) * circumference;
 
                             return `
-                                <div class="bubble-wrapper" style="left: ${pos.x}px; top: ${pos.y}px; width: ${size}px; height: ${size}px;">
+                                <div class="bubble-wrapper" data-index="${idx}" style="left: ${pos.x}px; top: ${pos.y}px; width: ${size}px; height: ${size}px; transition: all 0.3s ease;">
                                     <svg class="bubble-svg" width="${size}" height="${size}">
                                         <circle class="progress-ring-bg" cx="${radius}" cy="${radius}" r="${radius - 2}"/>
                                         <circle class="progress-ring" cx="${radius}" cy="${radius}" r="${radius - 2}"
@@ -1173,7 +1236,7 @@
                                                 stroke-dashoffset="${progressOffset}"/>
                                     </svg>
                                     <div class="bubble priority-${task.priority} bucket-${task.bucket}"
-                                         style="width: ${size - 8}px; height: ${size - 8}px; animation-delay: ${animationDelay}s;"
+                                         style="width: ${size - 8}px; height: ${size - 8}px;"
                                          onclick="showTaskModal(${idx})"
                                          title="${task.task}\nStatus: ${statusLabels[task.status]}\nBucket: ${task.bucket.toUpperCase()}">
                                         <span class="bucket-badge ${task.bucket}">${task.bucket.substring(0, 4)}</span>
